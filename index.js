@@ -137,7 +137,7 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
   }
 });
 
-app.put('/register-commands', async (req, res) => {
+app.get('/register-commands', async (req, res) => {
   console.log('Received command registration request');
 
   const commands = [
