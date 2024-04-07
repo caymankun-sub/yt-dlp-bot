@@ -61,11 +61,12 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
 
         console.log('Received data:', responseData);
 
-        // データから Embed を作成
-        const embed = {
+        const mediatype = responseData.mediatype;
+        
+        let embed = {
           type: 'link',
           title: responseData.title,
-          description: responseData.description, // 必要に応じて存在しない場合は削除しても構いません
+          description: responseData.description,
           url: responseData.url,
           color: 0x0000FF,
           image: {
@@ -76,7 +77,18 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
             url: responseData.uploader_url,
           },
         };
-
+        
+        if (mediatype === 'video') {
+          embed.video = {
+            url: responseData.url,
+            width: 1280,
+            height: 720,
+          };
+        } else if (mediatype === 'audio') {
+          embed.audio = {
+            url: responseData.url,
+          };
+        }
 
         // メッセージ内容
         const messageData = {
