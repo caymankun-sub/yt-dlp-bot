@@ -12,41 +12,56 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 app.use(express.json());
 
-// インタラクションを処理するエンドポイント
+// 非同期関数: データを取得
+async function fetchData(url, type) {
+  try {
+    const response = await axios.get(
+      `https://yt-dlp.cyclic.app/ogp?url=${encodeURIComponent(url)}&type=${type}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('An error occurred while fetching data:', error);
+    throw new Error('Failed to fetch data');
+  }
+}
+
 app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
-  console.log('Interaction received:', req.body); // リクエストのボディをログに出力
+  console.log('Interaction received:', req.body);
 
   const interaction = req.body;
 
   if (interaction.type === 1) {
-    console.log('Received PING interaction'); // PING インタラクションを受信したことをログに出力
+    console.log('Received PING interaction');
 
-    // PING interaction
     res.json({
       type: InteractionResponseType.PONG
     });
   } else if (interaction.type === 2) {
-    console.log('Received COMMAND interaction:', interaction.data.name); // コマンドインタラクションを受信したことをログに出力
+    console.log('Received COMMAND interaction:', interaction.data.name);
 
-    // Command interaction
     const commandName = interaction.data.name;
 
     if (commandName === 'yt') {
-      console.log('Processing yt command'); // yt コマンドを処理していることをログに出力
+      console.log('Processing yt command');
 
       const url = interaction.data.options.find(option => option.name === 'url').value;
       const type = interaction.data.options.find(option => option.name === 'type').value;
 
-      // Defer the initial response
+      // Deferred レスポンスを送信
       res.json({
         type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
       });
 
       try {
+        // データの取得
         const responseData = await fetchData(url, type);
+        if (responseData instanceof Error) {
+          throw responseData;
+        }
 
-        console.log('Received data:', responseData); // 受信したデータをログに出力
+        console.log('Received data:', responseData);
 
+        // データから Embed を作成
         const embed = {
           title: responseData.title,
           description: responseData.url,
@@ -56,34 +71,55 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
           },
         };
 
-        res.json({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            embeds: [embed],
+        // メッセージ内容
+        const messageData = {
+          embeds: [embed],
+        };
+
+        // InteractionからチャンネルIDを取得
+        const channelID = interaction.channel_id;
+
+        // Discord APIエンドポイント
+        const messageEndpoint = `https://discord.com/api/v10/channels/${channelID}/messages`;
+
+        // メッセージを送信
+        await axios.post(messageEndpoint, messageData, {
+          headers: {
+            'Authorization': `Bot ${DISCORD_TOKEN}`,
+            'Content-Type': 'application/json',
           },
         });
+
+        // レスポンスを送信せずに終了
+        return;
       } catch (error) {
         console.error('An error occurred while fetching data:', error);
-        res.json({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: 'An error occurred while fetching data.',
+
+        // エラーメッセージ
+        const errorMessage = 'データの取得中にエラーが発生しました。後でもう一度試してみてください.';
+
+        // メッセージ内容
+        const errorData = {
+          content: errorMessage,
+        };
+
+        // メッセージを送信
+        await axios.post(messageEndpoint, errorData, {
+          headers: {
+            'Authorization': `Bot ${DISCORD_TOKEN}`,
+            'Content-Type': 'application/json',
           },
         });
+
+        // エラーレスポンスを送信せずに終了
+        return;
       }
     }
-
-  } else {
-    console.log('Received unknown interaction type:', interaction.type); // 未知のインタラクションタイプを受信したことをログに出力
-
-    // Other interaction types
-    res.status(400).end();
   }
 });
 
-// Endpoint for registering slash commands
 app.put('/register-commands', async (req, res) => {
-  console.log('Received command registration request'); // コマンド登録リクエストを受信したことをログに出力
+  console.log('Received command registration request');
 
   const commands = [
     {
@@ -118,24 +154,13 @@ app.put('/register-commands', async (req, res) => {
       },
     });
 
-    console.log('Commands registered:', response.data); // 登録されたコマンドをログに出力
+    console.log('Commands registered:', response.data);
     res.send('Commands have been registered');
   } catch (error) {
     console.error('Error registering commands:', error);
     res.status(500).send('Error registering commands');
   }
 });
-
-async function fetchData(url, type) {
-  try {
-    const response = await axios.get(
-      `https://yt-dlp.cyclic.app/ogp?url=${encodeURIComponent(url)}&type=${type}`
-    );
-    return response.data;
-  } catch (error) {
-    return Promise.reject('Failed to fetch data');
-  }
-}
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
