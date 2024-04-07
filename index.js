@@ -133,7 +133,7 @@ async function fetchData(url, type) {
     );
     return response.data;
   } catch (error) {
-    throw new Error('Failed to fetch data');
+    return Promise.reject('Failed to fetch data');
   }
 }
 
