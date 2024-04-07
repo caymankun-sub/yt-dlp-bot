@@ -63,12 +63,17 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
 
         // データから Embed を作成
         const embed = {
+          type: link,
           title: responseData.title,
           description: responseData.description,
           url: responseData.url,
           color: 0x0000FF,
           image: {
             url: responseData.thumbnail,
+          },
+          author: {
+            name: responseData.uploader,
+            url: responseData.uploader_url,
           },
         };
 
