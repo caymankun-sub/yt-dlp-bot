@@ -16,7 +16,7 @@ app.use(express.json());
 async function fetchData(url, type) {
   try {
     const response = await axios.get(
-      `https://yt-dlp.cyclic.app/ogp?url=${encodeURIComponent(url)}&type=${type}`
+      `https://apis.caymankun.f5.si/ytdlpbot/?url=${encodeURIComponent(url)}&type=${type}`
     );
     return response.data;
   } catch (error) {
