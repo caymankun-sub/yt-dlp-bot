@@ -63,9 +63,9 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
 
         // データから Embed を作成
         const embed = {
-          type: link,
+          type: 'link',
           title: responseData.title,
-          description: responseData.description,
+          description: responseData.description, // 必要に応じて存在しない場合は削除しても構いません
           url: responseData.url,
           color: 0x0000FF,
           image: {
@@ -76,6 +76,7 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
             url: responseData.uploader_url,
           },
         };
+
 
         // メッセージ内容
         const messageData = {
