@@ -12,18 +12,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 app.use(express.json());
 
-// 非同期関数: データを取得
-async function fetchData(url, type) {
-  try {
-    const response = await axios.get(
-      `https://apis.caymankun.f5.si/ytdlpbot/?url=${encodeURIComponent(url)}&type=${type}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('An error occurred while fetching data:', error);
-    throw new Error('Failed to fetch data');
-  }
-}
+const sendDeferredResponse = require('./defer');
+const fetchData = require('./yt');
 
 app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
   console.log('Interaction received:', req.body);
@@ -47,11 +37,10 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
       const url = interaction.data.options.find(option => option.name === 'url').value;
       const type = interaction.data.options.find(option => option.name === 'type').value;
 
-      // Deferred レスポンスを送信
-      res.json({
-        type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-      });
+      // レスポンスを送信
+      await sendDeferredResponse(res);
 
+      // 以降の処理を続行
       try {
         // データの取得
         const responseData = await fetchData(url, type);
@@ -61,8 +50,7 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
 
         console.log('Received data:', responseData);
 
-        const mediatype = responseData.mediatype;
-        
+        // Embedを作成
         let embed = {
           type: 'link',
           title: responseData.title,
@@ -78,6 +66,8 @@ app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), async (req, res) => {
           },
         };
         
+        // メディアタイプに応じてEmbedを修正
+        const mediatype = responseData.mediatype;
         if (mediatype === 'video') {
           embed.video = {
             url: responseData.url,
